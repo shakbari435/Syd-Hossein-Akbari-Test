@@ -3,17 +3,25 @@ package com.cafebazzar.test.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
+import com.cafebazzar.test.ui.kit.ErrorView
+import com.cafebazzar.test.ui.kit.LoadingView
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -42,6 +50,10 @@ fun CafebazzarTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
+    isLoading: Boolean = false,
+    isError: Boolean = false,
+    isEmpty: Boolean = false,
+    onRetryClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -65,6 +77,28 @@ fun CafebazzarTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content
+        content = {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
+                    if (isLoading) {
+                        LoadingView()
+                    } else if (isError) {
+                        ErrorView {
+                            if (onRetryClick != null) {
+                                onRetryClick()
+                            }
+                        }
+                    } else if (isEmpty) {
+                        ErrorView(errorMessage = "Ops...EMPTY")
+                    } else {
+                        content()
+                    }
+                }
+            }
+        }
     )
 }
