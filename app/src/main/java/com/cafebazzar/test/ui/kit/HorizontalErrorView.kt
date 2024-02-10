@@ -31,7 +31,7 @@ fun HorizontalErrorView(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 24.dp, end = 24.dp)
+            .padding(24.dp)
     ) {
         Text(
             color = if (isDarkTheme) {
@@ -51,7 +51,7 @@ fun HorizontalErrorView(
             ),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1C3051)),
             onClick = {
-                // onRetryClick()
+                 onRetryClick?.invoke()
             },
         ) {
             Text(

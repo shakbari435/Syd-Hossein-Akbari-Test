@@ -30,7 +30,7 @@ object Module {
             context,
             MovieDataBase::class.java,
             "movie_table"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
 
 
     @Provides

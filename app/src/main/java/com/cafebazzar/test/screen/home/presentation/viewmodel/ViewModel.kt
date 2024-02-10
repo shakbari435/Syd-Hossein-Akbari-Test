@@ -1,6 +1,5 @@
 package com.cafebazzar.test.screen.home.presentation.viewmodel
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.viewModelScope
 import com.cafebazzar.test.common.base.mvi.BaseViewModel
 import com.cafebazzar.test.common.base.mvi.api.ApiResponse
@@ -18,9 +17,8 @@ import javax.inject.Inject
 class ViewModel @Inject constructor(
     private var useCase: UseCase
 ) : BaseViewModel<Intent, States>() {
-    var isLoadMoreLoading = mutableStateOf(false)
     private val _items = MutableStateFlow<MutableList<GetMoviesResponseModel.Movie>>(ArrayList())
-
+    private val listState: States.ListState = States.ListState(_items, false, false)
 
     var page: Int = 1
 
@@ -31,53 +29,51 @@ class ViewModel @Inject constructor(
             is Intent.GetMovies -> getMovies(intent.isRefresh)
         }
     }
-    private fun getMovies(isRefresh:Boolean) {
+
+    private fun getMovies(isRefresh: Boolean) {
         if (_items.value.isEmpty()) {
             setState { States.Loading }
         } else {
-            isLoadMoreLoading.value = true
+            setState {
+                listState.copy(loading = true, isError = false)
+            }
         }
         viewModelScope.launch {
-            useCase.getMovies(page,isRefresh).catch {
-                isLoadMoreLoading.value = false
-                if(_items.value.isEmpty()) {
+            useCase.getMovies(page, isRefresh).catch {
+                if (_items.value.isEmpty()) {
                     setState {
                         States.Error("${it.message}")
+                    }
+                } else {
+                    setState {
+                        listState.copy(loading = false, isError = true)
                     }
                 }
             }.collect {
                 when (it) {
                     is ApiResponse.Success -> {
-                        isLoadMoreLoading.value = false
                         if (!it.data.isNullOrEmpty()) {
                             _items.value.addAll(it.data)
-                            setState {
-                                States.Items(_items)
-                            }
                             page++
-                        } else {
-                            setState {
-                                States.Empty("")
-                            }
+                        }
+                        setState {
+                            listState.copy(loading = false, isError = false)
                         }
                     }
+
                     is ApiResponse.Failure -> {
-                        isLoadMoreLoading.value = false
-                        if(_items.value.isEmpty()) {
+                        if (_items.value.isEmpty()) {
                             setState {
                                 States.Error("${it.exception.message}")
+                            }
+                        } else {
+                            setState {
+                                listState.copy(loading = false, isError = true)
                             }
                         }
                     }
                 }
             }
-        }
-    }
-
-
-    fun updateScreenState(screenState: States) {
-        setState {
-            screenState
         }
     }
 }

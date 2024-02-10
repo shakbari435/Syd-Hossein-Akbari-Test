@@ -4,39 +4,42 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.annotation.ExperimentalCoilApi
 import com.cafebazzar.test.screen.home.data.model.GetMoviesResponseModel
 import com.cafebazzar.test.screen.home.presentation.intent.Intent
 import com.cafebazzar.test.screen.home.presentation.state.States
 import com.cafebazzar.test.screen.home.presentation.viewmodel.ViewModel
+import com.cafebazzar.test.ui.kit.HorizontalErrorView
+import com.cafebazzar.test.ui.kit.ItemView
 import com.cafebazzar.test.ui.kit.LoadingView
 import com.cafebazzar.test.ui.theme.CafebazzarTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -49,10 +52,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val viewModel: ViewModel = hiltViewModel()
-            fun LazyListState.isScrolledToEnd() =
+            fun LazyGridState.isScrolledToEnd() =
                 layoutInfo.visibleItemsInfo.lastOrNull()?.index == layoutInfo.totalItemsCount - 1
 
-            val state: LazyListState = rememberLazyListState()
+            val state: LazyGridState = rememberLazyGridState()
             val endOfListReached by remember {
                 derivedStateOf {
                     state.isScrolledToEnd()
@@ -72,27 +75,32 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 content = {
-                    if (screenState is States.Items) {
+                    if (screenState is States.ListState) {
                         val list = remember(screenState.items) {
                             derivedStateOf {
                                 screenState.items
                             }
                         }
+                        LaunchedEffect(endOfListReached) {
+                            if (!screenState.loading) {
+                                viewModel.sendIntent(intent = Intent.GetMovies(isRefresh = true))
+                            }
+                        }
                         LoadMovies(
-                            endOfListReached,
                             list.value,
                             state,
-                            viewModel.isLoadMoreLoading,
-                        ) {
-                            viewModel.sendIntent(intent = Intent.GetMovies(isRefresh = true))
-                        }
+                            screenState.loading,
+                            screenState.isError,
+                            onRetryClick = {
+                                viewModel.sendIntent(intent = Intent.GetMovies(isRefresh = true))
+                            }
+                        )
                     }
                 }
             )
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint(
         "UnusedMaterialScaffoldPaddingParameter",
         "UnusedMaterial3ScaffoldPaddingParameter"
@@ -100,65 +108,59 @@ class MainActivity : ComponentActivity() {
     @ExperimentalCoilApi
     @Composable
     fun LoadMovies(
-        endOfListReached: Boolean,
         list: MutableStateFlow<MutableList<GetMoviesResponseModel.Movie>>,
-        state: LazyListState,
-        isLoadMoreLoading: MutableState<Boolean>,
-        onLoadMore: () -> Unit
+        state: LazyGridState,
+        isLoadMoreLoading: Boolean,
+        isLoadMoreError: Boolean,
+        onRetryClick: () -> Unit
     ) {
-        LaunchedEffect(endOfListReached) {
-            onLoadMore()
-        }
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        Row {
-                            Text(text = "Created by")
-                            Text(text = " Syd Hossien Akbari")
-                        }
-                    }
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, start = 16.dp, end = 16.dp)
+                ) {
+                    Spacer(modifier = Modifier.padding(16.dp))
+                    Text(text = "Discover", color = Color.Red)
+                    Image(
+                        modifier = Modifier.size(35.dp),
+                        painter = painterResource(id = R.drawable.bazaar_logo_2_),
+                        contentDescription = ""
+                    )
+                }
             },
         ) {
-            LazyColumn(state = state, modifier = Modifier.padding(bottom = 50.dp)) {
+            val gridSize = 3
+            val fullSpan: (LazyGridItemSpanScope) -> GridItemSpan = { GridItemSpan(gridSize) }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(gridSize),
+                contentPadding = PaddingValues(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                state = state, modifier = Modifier.padding(top = 50.dp)
+            ) {
                 itemsIndexed(
                     items = list.value,
                     itemContent = { index, item ->
-                        Card(
-                            modifier = Modifier
-                                .padding(5.dp)
-                                .fillMaxWidth()
-                                .clickable {
-
-                                },
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = item.title ?: "Test App",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
-                                    )
-                                    Spacer(modifier = Modifier.padding(6.dp))
-                                    Text(
-                                        text = item.originalTitle ?: "Hossein Akbari",
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                        }
+                        ItemView(
+                            imageUrl = item.posterPath ?: "",
+                            title = item.title ?: ""
+                        )
                     }
                 )
-                if (isLoadMoreLoading.value) {
-                    item {
+                if (isLoadMoreLoading) {
+                    item(span = fullSpan) {
                         LoadingView()
+                    }
+                }
+                if (isLoadMoreError) {
+                    item(span = fullSpan) {
+                        HorizontalErrorView {
+                            onRetryClick.invoke()
+                        }
                     }
                 }
             }
