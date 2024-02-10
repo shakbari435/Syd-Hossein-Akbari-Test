@@ -85,7 +85,7 @@ fun CafebazzarTheme(
                         .fillMaxSize()
                 ) {
                     if (isLoading) {
-                        LoadingView()
+                        LoadingView(isPlaceHolder = true)
                     } else if (isError) {
                         ErrorView {
                             if (onRetryClick != null) {

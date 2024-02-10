@@ -79,7 +79,7 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
 
     // coil : load image url
-    implementation("io.coil-kt:coil-compose:1.3.2")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
     //hilt dagger
     implementation("com.google.dagger:hilt-android:2.50")
