@@ -1,1 +1,1 @@
-# create project for cafebazzar test application 
+# create project for offer test application 
